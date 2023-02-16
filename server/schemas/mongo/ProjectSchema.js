@@ -17,6 +17,10 @@ const projectSchema = mongoose.Schema({
             message: "Status must be pending, processing, queue or completed",
         },
     },
+    clientId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Client",
+    },
 });
 
 const Project = mongoose.model("projects", projectSchema);

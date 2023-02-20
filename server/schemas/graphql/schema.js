@@ -6,6 +6,7 @@ const {
     GraphQLBoolean,
     GraphQLList,
     GraphQLNonNull,
+    GraphQLEnumType,
 } = require("graphql");
 
 const { clients, projects } = require("../../data/sampleData");
@@ -36,7 +37,7 @@ const ClientType = new GraphQLObjectType({
             type: ProjectType,
             resolve(client, args) {
                 // return projects.find((project) => project.clientId === client.id);
-                return Project.find({ clientId: client.id });
+                return Project.find({ clientId: client._id });
             },
         },
     }),
@@ -83,12 +84,55 @@ const mutation = new GraphQLObjectType({
                 phone: { type: GraphQLNonNull(GraphQLString) },
             },
             async resolve(parent, args) {
-                const client = await Client.create({
+                const client = await Project.create({
                     name: args.name,
                     email: args.email,
                     phone: args.phone,
                 });
-                return client.save();
+                return client;
+            },
+        },
+
+        deleteClient: {
+            type: ClientType,
+            args: {
+                id: { type: GraphQLNonNull(GraphQLID) },
+            },
+            async resolve(parent, args) {
+                const client = await Client.findByIdAndDelete(args.id);
+                return client;
+            },
+        },
+
+        addProject: {
+            type: ProjectType,
+
+            args: {
+                clientId: { type: GraphQLNonNull(GraphQLID) },
+                name: { type: GraphQLNonNull(GraphQLString) },
+                description: { type: GraphQLNonNull(GraphQLString) },
+                status: {
+                    type: new GraphQLEnumType({
+                        name: "ProjectStatus",
+                        values: {
+                            new: { value: "pending" },
+                            progress: { value: "progress" },
+                            queue: { value: "queue" },
+                            completed: { value: "completed" },
+                        },
+                    }),
+                    defaultValue: "pending",
+                },
+            },
+            async resolve(parent, args) {
+                const client = await Project.create({
+                    name: args.name,
+                    description: args.description,
+                    status: args.status,
+                    clientId: args.clientId,
+                    z,
+                });
+                return client;
             },
         },
     },
@@ -141,4 +185,5 @@ const RootQueryType = new GraphQLObjectType({
 
 module.exports = new GraphQLSchema({
     query: RootQueryType,
+    mutation,
 });

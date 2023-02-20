@@ -9,7 +9,7 @@ const {
     GraphQLEnumType,
 } = require("graphql");
 
-const { clients, projects } = require("../../data/sampleData");
+// const { clients, projects } = require("../../data/sampleData");
 
 const Project = require("../mongo/ProjectSchema");
 const Client = require("../mongo/ClientSchema");
@@ -34,10 +34,11 @@ const ClientType = new GraphQLObjectType({
         },
 
         project: {
-            type: ProjectType,
-            resolve(client, args) {
+            type: new GraphQLList(ProjectType),
+            async resolve(client, args) {
                 // return projects.find((project) => project.clientId === client.id);
-                return Project.find({ clientId: client._id });
+                const data = await Project.find({ clientId: client.id });
+                return data;
             },
         },
     }),
@@ -64,9 +65,9 @@ const ProjectType = new GraphQLObjectType({
 
         client: {
             type: ClientType,
-            resolve(project, args) {
+            async resolve(project, args) {
                 // return clients.find((client) => client.id === project.clientId);
-                return Client.findById(project.clientId);
+                return await Client.findById(project.clientId);
             },
         },
     }),
@@ -100,7 +101,8 @@ const mutation = new GraphQLObjectType({
             },
             async resolve(parent, args) {
                 const client = await Client.findByIdAndDelete(args.id);
-                return client;
+                const project = await Project.deleteMany({ clientId: args.id });
+                return { client, project };
             },
         },
 
@@ -125,14 +127,59 @@ const mutation = new GraphQLObjectType({
                 },
             },
             async resolve(parent, args) {
-                const client = await Project.create({
+                const project = await Project.create({
                     name: args.name,
                     description: args.description,
                     status: args.status,
                     clientId: args.clientId,
-                    z,
                 });
-                return client;
+                return project;
+            },
+        },
+
+        updateProject: {
+            type: ProjectType,
+
+            args: {
+                id: { type: GraphQLNonNull(GraphQLID) },
+                name: { type: GraphQLString },
+                description: { type: GraphQLString },
+                status: {
+                    type: new GraphQLEnumType({
+                        name: "UpdateProjectStatus",
+                        values: {
+                            new: { value: "pending" },
+                            progress: { value: "progress" },
+                            queue: { value: "queue" },
+                            completed: { value: "completed" },
+                        },
+                    }),
+                },
+            },
+            async resolve(parent, args) {
+                const project = await Project.findByIdAndUpdate(
+                    args.id,
+                    {
+                        $set: {
+                            name: args.name,
+                            description: args.description,
+                            status: args.status,
+                        },
+                    },
+                    { new: true } // THIS MEANS RETURN UPDATED OBJECT
+                );
+                return project;
+            },
+        },
+
+        deleteProject: {
+            type: ProjectType,
+            args: {
+                id: { type: GraphQLNonNull(GraphQLID) },
+            },
+            async resolve(parent, args) {
+                const project = await Project.findByIdAndDelete(args.id);
+                return project;
             },
         },
     },

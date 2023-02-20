@@ -101,7 +101,7 @@ const mutation = new GraphQLObjectType({
             },
             async resolve(parent, args) {
                 const client = await Client.findByIdAndDelete(args.id);
-                const project = await Project.findOneAndDelete({ clientId: args.id });
+                const project = await Project.deleteMany({ clientId: args.id });
                 return { client, project };
             },
         },
@@ -166,7 +166,7 @@ const mutation = new GraphQLObjectType({
                             status: args.status,
                         },
                     },
-                    { new: true } // THIS MEANS IF THERE IS NO PROJECT THEN CREATE NEW
+                    { new: true } // THIS MEANS RETURN UPDATED OBJECT
                 );
                 return project;
             },
